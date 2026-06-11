@@ -35,7 +35,7 @@ def load_csv(
         Numeric dtype used by ``numpy.genfromtxt``.
 
     Returns
-  
+    -------
     X, y:
         Feature matrix of shape ``(n_samples, n_features)`` and target vector.
     """
