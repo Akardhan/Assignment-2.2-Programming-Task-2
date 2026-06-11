@@ -48,6 +48,20 @@ class TestStats(unittest.TestCase):
         self.assertEqual(np.sum(counts), 4)
         self.assertEqual(len(edges), 3)
 
+    def test_streaming_stats_sliding_window_histogram(self):
+        stats = StreamingStats(window_size=3)
+        stats.update_stats(np.array([[1], [2], [3]], dtype=float))
+        stats.update_stats(np.array([[4], [5]], dtype=float))
+        counts, _ = stats.histogram(feature_index=0, bins=3, sliding_window=True)
+        self.assertEqual(np.sum(counts), 3)
+
+    def test_streaming_stats_sliding_window_quantile(self):
+        stats = StreamingStats(window_size=2)
+        stats.update_stats(np.array([[1], [10]], dtype=float))
+        stats.update_stats(np.array([[20]], dtype=float))
+        q = stats.quantile(0.5, sliding_window=True)
+        self.assertTrue(np.allclose(q, np.array([15.0])))
+
     def test_streaming_stats_reset(self):
         stats = StreamingStats()
         stats.update_stats(np.array([[1, 2]], dtype=float))

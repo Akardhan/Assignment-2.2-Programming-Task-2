@@ -50,6 +50,16 @@ class TestDecisionTree(unittest.TestCase):
         with self.assertRaises(ValueError):
             DecisionTreeClassifier(max_depth=0)
 
+    def test_tree_invalid_max_samples(self):
+        with self.assertRaises(ValueError):
+            DecisionTreeClassifier(max_samples=0)
+
+    def test_tree_fit_resets_feature_count(self):
+        model = DecisionTreeClassifier(max_depth=2)
+        model.fit(self.X, self.y)
+        model.fit(np.array([[0, 1, 2], [1, 2, 3]], dtype=float), np.array([0, 1]))
+        self.assertEqual(model.n_features_in_, 3)
+
     def test_tree_summary(self):
         model = DecisionTreeClassifier(max_depth=3)
         model.fit(self.X, self.y)

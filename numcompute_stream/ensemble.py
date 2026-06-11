@@ -39,8 +39,16 @@ class EnsembleClassifier:
             raise ValueError('n_estimators must be positive.')
         if method not in {'bagging', 'random_forest'}:
             raise ValueError("method must be 'bagging' or 'random_forest'.")
+        if max_depth <= 0:
+            raise ValueError('max_depth must be positive.')
+        if min_samples_split < 2:
+            raise ValueError('min_samples_split must be at least 2.')
+        if criterion not in {'gini', 'entropy'}:
+            raise ValueError("criterion must be 'gini' or 'entropy'.")
         if not 0 < sample_ratio <= 1:
             raise ValueError('sample_ratio must be in (0, 1].')
+        if max_samples is not None and max_samples <= 0:
+            raise ValueError('max_samples must be positive when provided.')
         self.n_estimators = n_estimators
         self.method = method
         self.max_depth = max_depth
@@ -62,6 +70,7 @@ class EnsembleClassifier:
         self._buffer_y: Array | None = None
 
     def fit(self, X: Array, y: Array) -> 'EnsembleClassifier':
+        self._reset_state()
         X, y = self._validate_xy(X, y)
         self._buffer_X = X.copy()
         self._buffer_y = y.copy()
@@ -81,21 +90,14 @@ class EnsembleClassifier:
 
     def predict(self, X: Array) -> Array:
         self._check_fitted()
-        X = np.asarray(X, dtype=float)
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
+        X = self._prepare_X(X)
         preds = np.vstack([est.predict(X) for est in self.estimators_]).T
-        out = []
-        for row in preds:
-            counts = np.array([np.sum(row == c) for c in self.classes_])
-            out.append(self.classes_[np.flatnonzero(counts == counts.max())[0]])
-        return np.array(out, dtype=self.classes_.dtype)
+        counts = np.vstack([np.sum(preds == cls, axis=1) for cls in self.classes_]).T
+        return self.classes_[np.argmax(counts, axis=1)]
 
     def predict_proba(self, X: Array) -> Array:
         self._check_fitted()
-        X = np.asarray(X, dtype=float)
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
+        X = self._prepare_X(X)
         probs = np.zeros((X.shape[0], len(self.classes_)), dtype=float)
         for est in self.estimators_:
             est_probs = est.predict_proba(X)
@@ -206,6 +208,30 @@ class EnsembleClassifier:
             'oob_score': self.oob_score_,
         }
 
+    def summary(self) -> dict:
+        """Alias for ``describe`` used by demos and reports."""
+        return self.describe()
+
+    def _prepare_X(self, X: Array) -> Array:
+        X = np.asarray(X, dtype=float)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        if X.ndim != 2:
+            raise ValueError('X must be a 1D or 2D numeric array.')
+        if X.shape[1] != self.n_features_in_:
+            raise ValueError(f'Expected {self.n_features_in_} features, got {X.shape[1]}.')
+        return X
+
+    def _reset_state(self) -> None:
+        self.rng = np.random.default_rng(self.random_state)
+        self.estimators_ = []
+        self.classes_ = None
+        self.n_features_in_ = None
+        self.feature_importances_ = None
+        self.oob_score_ = None
+        self._buffer_X = None
+        self._buffer_y = None
+
     def _check_fitted(self) -> None:
         if not self.estimators_:
             raise RuntimeError('EnsembleClassifier is not fitted yet.')
@@ -248,10 +274,16 @@ class BoostingClassifier:
     ) -> None:
         if n_estimators <= 0:
             raise ValueError('n_estimators must be positive.')
-        if max_depth < 0:
-            raise ValueError('max_depth must be non-negative.')
+        if max_depth <= 0:
+            raise ValueError('max_depth must be positive.')
         if learning_rate <= 0:
             raise ValueError('learning_rate must be positive.')
+        if min_samples_split < 2:
+            raise ValueError('min_samples_split must be at least 2.')
+        if criterion not in {'gini', 'entropy'}:
+            raise ValueError("criterion must be 'gini' or 'entropy'.")
+        if max_samples is not None and max_samples <= 0:
+            raise ValueError('max_samples must be positive when provided.')
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.learning_rate = learning_rate
@@ -270,6 +302,7 @@ class BoostingClassifier:
         self._buffer_y: Array | None = None
 
     def fit(self, X: Array, y: Array) -> 'BoostingClassifier':
+        self._reset_state()
         X, y = self._validate_xy(X, y)
         self._buffer_X = X.copy()
         self._buffer_y = y.copy()
@@ -455,7 +488,21 @@ class BoostingClassifier:
             'mean_estimator_error': float(np.mean(self.estimator_errors_)) if self.estimator_errors_.size else 0.0,
         }
 
+    def summary(self) -> dict:
+        """Alias for ``describe`` used by demos and reports."""
+        return self.describe()
+
+    def _reset_state(self) -> None:
+        self.rng = np.random.default_rng(self.random_state)
+        self.estimators_ = []
+        self.estimator_weights_ = None
+        self.estimator_errors_ = None
+        self.classes_ = None
+        self.n_features_in_ = None
+        self.feature_importances_ = None
+        self._buffer_X = None
+        self._buffer_y = None
+
     def _check_fitted(self) -> None:
         if not self.estimators_:
             raise RuntimeError('BoostingClassifier is not fitted yet.')
-

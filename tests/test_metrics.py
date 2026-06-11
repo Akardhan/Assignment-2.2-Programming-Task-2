@@ -8,6 +8,7 @@ from numcompute_stream.metrics import (
     StreamingF1,
     StreamingConfusionMatrix,
     StreamingAUC,
+    RollingConfusionMatrix,
 )
 
 
@@ -45,6 +46,16 @@ class TestMetrics(unittest.TestCase):
         cm = metric.result()
         self.assertEqual(cm.shape, (2, 2))
         self.assertEqual(np.sum(cm), 4)
+
+    def test_confusion_matrix_expands_mixed_labels(self):
+        metric = StreamingConfusionMatrix(classes=np.array([0]))
+        metric.update(np.array([0, "new"], dtype=object), np.array(["new", 0], dtype=object))
+        self.assertEqual(metric.result().shape, (2, 2))
+
+    def test_rolling_confusion_matrix_window(self):
+        metric = RollingConfusionMatrix(classes=np.array([0, 1]), window_size=2)
+        metric.update(np.array([0, 1, 1]), np.array([0, 1, 0]))
+        self.assertEqual(np.sum(metric.result()), 2)
 
     def test_auc(self):
         metric = StreamingAUC()

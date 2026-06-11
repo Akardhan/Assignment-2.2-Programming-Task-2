@@ -27,7 +27,13 @@ class _Node:
 
 
 class DecisionTreeClassifier:
-   
+    """Depth-limited NumPy decision tree classifier.
+
+    The estimator supports batch ``fit`` and stream-style ``partial_fit``.
+    Incremental updates append chunks to a bounded replay buffer and rebuild the
+    tree, which keeps the API online-compatible while allowing deterministic
+    Gini/entropy split search, NaN imputation, and feature subsampling.
+    """
 
     def __init__(
         self,
@@ -39,14 +45,16 @@ class DecisionTreeClassifier:
         max_samples: Optional[int] = 5000,
         random_state: Optional[int] = None,
     ) -> None:
-        if max_depth < 0:
-            raise ValueError('max_depth must be non-negative.')
+        if max_depth <= 0:
+            raise ValueError('max_depth must be positive.')
         if min_samples_split < 2:
             raise ValueError('min_samples_split must be at least 2.')
         if criterion not in {'gini', 'entropy'}:
             raise ValueError("criterion must be 'gini' or 'entropy'.")
         if max_thresholds <= 0:
             raise ValueError('max_thresholds must be positive.')
+        if max_samples is not None and max_samples <= 0:
+            raise ValueError('max_samples must be positive when provided.')
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.criterion = criterion
@@ -68,6 +76,7 @@ class DecisionTreeClassifier:
         self._buffer_y: Array | None = None
 
     def fit(self, X: Array, y: Array) -> 'DecisionTreeClassifier':
+        self._reset_state()
         X, y = self._validate_xy(X, y)
         self._buffer_X = X.copy()
         self._buffer_y = y.copy()
@@ -279,6 +288,24 @@ class DecisionTreeClassifier:
             'criterion': self.criterion,
             'max_depth': int(self.max_depth),
         }
+
+    def summary(self) -> dict:
+        """Alias for ``describe`` used by demos and reports."""
+        return self.describe()
+
+    def _reset_state(self) -> None:
+        self.rng = np.random.default_rng(self.random_state)
+        self.root_ = None
+        self.classes_ = None
+        self.n_features_in_ = None
+        self.feature_means_ = None
+        self.feature_importances_ = None
+        self.depth_ = 0
+        self.n_leaves_ = 0
+        self.node_count_ = 0
+        self._feature_importances_raw = None
+        self._buffer_X = None
+        self._buffer_y = None
 
     def _prepare_X(self, X: Array) -> Array:
         X = np.asarray(X, dtype=float)

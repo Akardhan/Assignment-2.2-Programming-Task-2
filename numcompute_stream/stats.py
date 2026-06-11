@@ -29,19 +29,28 @@ def nanvariance(X: Array, axis: int | None = 0, ddof: int = 0) -> Array:
     return np.nanvar(np.asarray(X, dtype=float), axis=axis, ddof=ddof)
 
 
-class RunningStats:
+class StreamingStats:
     """Track streaming mean, variance, min, max, quantiles and histograms.
 
-    Mean/variance use a vectorised parallel Welford update. Quantiles are
-    estimated from a bounded reservoir of recent observations to keep memory
-    usage predictable.
+    Mean/variance use a vectorised parallel Welford update. Quantiles and
+    histograms can use either a bounded reservoir sample or, when ``window_size``
+    is configured, the most recent rows as a sliding window.
     """
 
-    def __init__(self, *, reservoir_size: int = 10000, random_state: Optional[int] = 42) -> None:
+    def __init__(
+        self,
+        *,
+        reservoir_size: int = 10000,
+        random_state: Optional[int] = 42,
+        window_size: Optional[int] = None,
+    ) -> None:
         if reservoir_size <= 0:
             raise ValueError('reservoir_size must be positive.')
+        if window_size is not None and window_size <= 0:
+            raise ValueError('window_size must be positive when provided.')
         self.reservoir_size = reservoir_size
         self.random_state = random_state
+        self.window_size = window_size
         self.rng = np.random.default_rng(random_state)
         self.n_features_in_: int | None = None
         self.n_seen_: np.ndarray | None = None
@@ -50,9 +59,10 @@ class RunningStats:
         self.min_: np.ndarray | None = None
         self.max_: np.ndarray | None = None
         self.reservoir_: np.ndarray | None = None
+        self.window_: np.ndarray | None = None
         self.total_rows_: int = 0
 
-    def update_stats(self, X_chunk: Array) -> 'RunningStats':
+    def update_stats(self, X_chunk: Array) -> 'StreamingStats':
         X = _ensure_2d(X_chunk)
         if self.n_features_in_ is None:
             self.n_features_in_ = X.shape[1]
@@ -62,6 +72,7 @@ class RunningStats:
             self.min_ = np.full(X.shape[1], np.inf)
             self.max_ = np.full(X.shape[1], -np.inf)
             self.reservoir_ = np.empty((0, X.shape[1]), dtype=float)
+            self.window_ = np.empty((0, X.shape[1]), dtype=float)
         elif X.shape[1] != self.n_features_in_:
             raise ValueError(f'Expected {self.n_features_in_} features, got {X.shape[1]}.')
 
@@ -81,6 +92,7 @@ class RunningStats:
             self.min_ = np.fmin(self.min_, np.nanmin(X, axis=0))
             self.max_ = np.fmax(self.max_, np.nanmax(X, axis=0))
         self._update_reservoir(X)
+        self._update_window(X)
         self.total_rows_ += X.shape[0]
         return self
 
@@ -94,6 +106,16 @@ class RunningStats:
             return
         idx = self.rng.choice(combined.shape[0], size=self.reservoir_size, replace=False)
         self.reservoir_ = combined[idx]
+
+    def _update_window(self, X: Array) -> None:
+        if self.window_size is None:
+            return
+        if self.window_ is None:
+            self.window_ = X.copy()
+        else:
+            self.window_ = np.vstack([self.window_, X])
+        if self.window_.shape[0] > self.window_size:
+            self.window_ = self.window_[-self.window_size :]
 
     def mean(self) -> Array:
         self._check_fitted()
@@ -115,23 +137,42 @@ class RunningStats:
         self._check_fitted()
         return self.max_.copy()
 
-    def quantile(self, q: float | Iterable[float]) -> Array:
+    def quantile(self, q: float | Iterable[float], *, sliding_window: bool = False) -> Array:
         self._check_fitted()
-        if self.reservoir_.size == 0:
-            raise RuntimeError('No reservoir data available.')
-        return np.nanquantile(self.reservoir_, q, axis=0)
+        data = self._distribution_data(sliding_window=sliding_window)
+        return np.nanquantile(data, q, axis=0)
 
-    def histogram(self, feature_index: int = 0, bins: int = 10, range: Optional[Tuple[float, float]] = None):
+    def histogram(
+        self,
+        feature_index: int = 0,
+        bins: int = 10,
+        range: Optional[Tuple[float, float]] = None,
+        *,
+        sliding_window: bool = False,
+    ):
         self._check_fitted()
         if feature_index < 0 or feature_index >= self.n_features_in_:
             raise ValueError('feature_index is out of range.')
-        values = self.reservoir_[:, feature_index]
+        values = self._distribution_data(sliding_window=sliding_window)[:, feature_index]
         values = values[~np.isnan(values)]
         return np.histogram(values, bins=bins, range=range)
 
     def reset(self) -> None:
-        self.__init__(reservoir_size=self.reservoir_size, random_state=self.random_state)
+        self.__init__(
+            reservoir_size=self.reservoir_size,
+            random_state=self.random_state,
+            window_size=self.window_size,
+        )
 
     def _check_fitted(self) -> None:
         if self.mean_ is None:
-            raise RuntimeError('RunningStats has not received any data yet.')
+            raise RuntimeError('StreamingStats has not received any data yet.')
+
+    def _distribution_data(self, *, sliding_window: bool) -> Array:
+        data = self.window_ if sliding_window else self.reservoir_
+        if data is None or data.size == 0:
+            source = 'sliding-window' if sliding_window else 'reservoir'
+            raise RuntimeError(f'No {source} data available.')
+        return data
+        
+RunningStats = StreamingStats

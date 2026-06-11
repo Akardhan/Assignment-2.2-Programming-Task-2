@@ -44,6 +44,18 @@ class TestEnsemble(unittest.TestCase):
         with self.assertRaises(ValueError):
             EnsembleClassifier(n_estimators=0)
 
+    def test_ensemble_invalid_depth(self):
+        with self.assertRaises(ValueError):
+            EnsembleClassifier(max_depth=0)
+
+    def test_ensemble_fit_resets_feature_count(self):
+        model = EnsembleClassifier(n_estimators=3, max_depth=2, random_state=1)
+        model.fit(self.X, self.y)
+        X_new = np.array([[0, 1, 2], [1, 2, 3], [3, 4, 5]], dtype=float)
+        y_new = np.array([0, 1, 1])
+        model.fit(X_new, y_new)
+        self.assertEqual(model.n_features_in_, 3)
+
     def test_boosting_fit_predict(self):
         model = BoostingClassifier(n_estimators=3, max_depth=1, random_state=1)
         model.fit(self.X, self.y)
@@ -56,6 +68,11 @@ class TestEnsemble(unittest.TestCase):
         model.partial_fit(self.X[4:], self.y[4:])
         preds = model.predict(self.X)
         self.assertEqual(preds.shape, self.y.shape)
+
+    def test_boosting_summary(self):
+        model = BoostingClassifier(n_estimators=3, max_depth=1, random_state=1)
+        model.fit(self.X, self.y)
+        self.assertIn("n_estimators_used", model.summary())
 
 
 if __name__ == "__main__":

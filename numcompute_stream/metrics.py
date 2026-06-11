@@ -18,6 +18,17 @@ def _as_1d(a: Array) -> Array:
     return a
 
 
+def _unique_in_order(*arrays: Array) -> Array:
+    labels = []
+    seen = set()
+    for array in arrays:
+        for value in _as_1d(array).tolist():
+            if value not in seen:
+                labels.append(value)
+                seen.add(value)
+    return np.array(labels, dtype=object)
+
+
 class StreamingAccuracy:
     """Accumulate accuracy over chunks."""
 
@@ -46,7 +57,7 @@ class StreamingConfusionMatrix:
     """Accumulate a confusion matrix over time."""
 
     def __init__(self, classes: Optional[Iterable] = None) -> None:
-        self.classes_: np.ndarray | None = np.array(list(classes)) if classes is not None else None
+        self.classes_: np.ndarray | None = np.array(list(classes), dtype=object) if classes is not None else None
         self.matrix_: np.ndarray | None = None
 
     def update(self, y_true: Array, y_pred: Array) -> 'StreamingConfusionMatrix':
@@ -54,7 +65,7 @@ class StreamingConfusionMatrix:
         y_pred = _as_1d(y_pred)
         if y_true.shape[0] != y_pred.shape[0]:
             raise ValueError('y_true and y_pred must have the same length.')
-        seen = np.unique(np.concatenate([y_true, y_pred]))
+        seen = _unique_in_order(y_true, y_pred)
         if self.classes_ is None:
             self.classes_ = seen
             self.matrix_ = np.zeros((len(self.classes_), len(self.classes_)), dtype=int)
@@ -65,7 +76,7 @@ class StreamingConfusionMatrix:
             if missing:
                 old_classes = self.classes_.copy()
                 old_matrix = self.matrix_.copy()
-                self.classes_ = np.concatenate([self.classes_, np.array(missing, dtype=old_classes.dtype)])
+                self.classes_ = np.concatenate([self.classes_, np.array(missing, dtype=object)])
                 self.matrix_ = np.zeros((len(self.classes_), len(self.classes_)), dtype=int)
                 self.matrix_[: len(old_classes), : len(old_classes)] = old_matrix
         lookup = {label: i for i, label in enumerate(self.classes_)}
@@ -186,7 +197,7 @@ class RollingConfusionMatrix:
         if window_size <= 0:
             raise ValueError('window_size must be positive.')
         self.window_size = window_size
-        self.classes_: np.ndarray | None = np.array(list(classes)) if classes is not None else None
+        self.classes_: np.ndarray | None = np.array(list(classes), dtype=object) if classes is not None else None
         self.items = deque(maxlen=window_size)
 
     def update(self, y_true: Array, y_pred: Array) -> 'RollingConfusionMatrix':
@@ -194,13 +205,13 @@ class RollingConfusionMatrix:
         y_pred = _as_1d(y_pred)
         if y_true.shape[0] != y_pred.shape[0]:
             raise ValueError('y_true and y_pred must have the same length.')
-        seen = np.unique(np.concatenate([y_true, y_pred]))
+        seen = _unique_in_order(y_true, y_pred)
         if self.classes_ is None:
             self.classes_ = seen
         else:
             missing = [c for c in seen if c not in set(self.classes_)]
             if missing:
-                self.classes_ = np.concatenate([self.classes_, np.array(missing, dtype=self.classes_.dtype)])
+                self.classes_ = np.concatenate([self.classes_, np.array(missing, dtype=object)])
         self.items.extend(list(zip(y_true.tolist(), y_pred.tolist())))
         return self
 

@@ -22,6 +22,7 @@ class StreamTrainer:
         self.model = model
         self.metrics = metrics if metrics is not None else ClassificationMetrics()
         self.history_: list[dict] = []
+        self.logs_ = self.history_
         self.chunk_index_: int = 0
         self.cumulative_accuracy_ = StreamingAccuracy()
 
@@ -40,7 +41,7 @@ class StreamTrainer:
         self.chunk_index_ += 1
         return row
 
-    def score_chunk(self, X, y) -> dict:
+    def score_chunk(self, X, y) -> float:
         X = np.asarray(X, dtype=float)
         y = np.asarray(y).ravel()
         y_pred = self.model.predict(X)
@@ -49,7 +50,7 @@ class StreamTrainer:
         row = self._make_log_row(X, y, y_pred, phase='score')
         self.history_.append(row)
         self.chunk_index_ += 1
-        return row
+        return row['chunk_accuracy']
 
     def fit_stream(self, chunks: Iterable[Tuple[np.ndarray, np.ndarray]]) -> list[dict]:
         for X_chunk, y_chunk in chunks:

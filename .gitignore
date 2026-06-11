@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+demo/.cache/
+demo/.matplotlib-cache/
+demo/figures/
+demo/stream_demo_data.csv
