@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Runnable streaming demo for Assignment 2.2.
 
 The demo is self-contained: it creates a small numeric CSV dataset, loads that
@@ -25,7 +26,16 @@ FONTCONFIG_CACHE.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("XDG_CACHE_HOME", str(CACHE_DIR))
 os.environ.setdefault("FC_CACHEDIR", str(FONTCONFIG_CACHE))
 
-import matplotlib
+try:
+    import matplotlib
+except ModuleNotFoundError as exc:
+    if exc.name != "matplotlib":
+        raise
+    raise SystemExit(
+        "Missing dependency: matplotlib. Install the project dependencies with "
+        "`python -m pip install numpy matplotlib pytest`, then rerun "
+        "`demo/stream_demo.py`."
+    ) from exc
 
 matplotlib.use("Agg")
 
