@@ -7,3 +7,4 @@ demo/.cache/
 demo/.matplotlib-cache/
 demo/figures/
 demo/stream_demo_data.csv
+.DS_Store
