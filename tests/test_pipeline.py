@@ -43,6 +43,18 @@ class TestPipeline(unittest.TestCase):
         preds = pipe.predict(self.X)
         self.assertEqual(preds.shape, self.y.shape)
 
+    def test_pipeline_transform_returns_preprocessed_features(self):
+        pipe = Pipeline([
+            ("impute", SimpleImputer()),
+            ("scale", StandardScaler()),
+            ("model", DecisionTreeClassifier(max_depth=3)),
+        ])
+
+        pipe.fit(self.X, self.y)
+        Xt = pipe.transform(self.X)
+        self.assertEqual(Xt.shape, self.X.shape)
+        self.assertTrue(np.all(np.isfinite(Xt)))
+
     def test_pipeline_predict_proba(self):
         pipe = Pipeline([
             ("scale", StandardScaler()),

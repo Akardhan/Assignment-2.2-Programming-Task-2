@@ -2,9 +2,11 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+__MACOSX/
 
+.cache/
+.matplotlib-cache/
 demo/.cache/
 demo/.matplotlib-cache/
 demo/figures/
 demo/stream_demo_data.csv
-.DS_Store

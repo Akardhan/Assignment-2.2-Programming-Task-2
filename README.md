@@ -4,6 +4,36 @@ NumCompute Stream is a NumPy-only streaming machine learning package for Assignm
 
 Only NumPy and matplotlib are used for package functionality. Pytest is used for the test suite.
 
+Repository link: https://github.com/Akardhan/Assignment-2.2-Programming-Task-2
+
+## How To Run
+
+Install the required packages first:
+
+```bash
+python -m pip install numpy matplotlib pytest
+```
+
+Then run the main verification commands:
+
+```bash
+python -m pytest -q
+python demo/stream_demo.py
+python benchmark/benchmark_stream.py
+```
+
+Expected key output:
+
+```text
+68 passed
+Chunks trained: 9
+Decision tree test accuracy: 0.987
+Random forest test accuracy: 1.000
+Speedup: tens of times faster; about 90x on the recorded benchmark run
+```
+
+Benchmark timings vary by machine and current system load, so describe the vectorised NumPy result as approximately tens of times faster rather than relying on a single exact speedup value.
+
 ## Features
 
 - `DecisionTreeClassifier` with Gini or entropy splits, NaN handling, depth limits, deterministic tie handling, and `partial_fit`.
@@ -26,6 +56,19 @@ benchmark/              Benchmark script
 README.md               Usage instructions
 ```
 
+## Requirement Mapping
+
+- Streaming learning: `numcompute_stream/stream.py`, `numcompute_stream/pipeline.py`, `numcompute_stream/tree.py`, `numcompute_stream/ensemble.py`
+- Decision tree: `numcompute_stream/tree.py`
+- Ensemble model: `numcompute_stream/ensemble.py`
+- Preprocessing: `numcompute_stream/preprocessing.py`
+- Streaming statistics: `numcompute_stream/stats.py`
+- Metrics: `numcompute_stream/metrics.py`
+- Visualisation: `numcompute_stream/visualise.py`
+- Demo notebook: `demo/stream_demo.ipynb`
+- Benchmark: `benchmark/benchmark_stream.py`
+- Tests: `tests/`
+
 ## Setup
 
 Use Python 3.10 or newer.
@@ -40,7 +83,7 @@ python -m pip install numpy matplotlib pytest
 python -m pytest -q
 ```
 
-The current suite contains 66 tests covering preprocessing, statistics, metrics, trees, ensembles, pipelines, visualisation, stream training, and edge cases.
+The current suite contains 68 tests covering preprocessing, statistics, metrics, trees, ensembles, pipelines, visualisation, stream training, and edge cases.
 
 ## Run The Demo
 
@@ -63,6 +106,8 @@ The benchmark reports:
 - loop-based versus NumPy-vectorised NaN-safe mean timing
 - streaming single-tree accuracy and runtime
 - streaming random-forest accuracy and runtime
+
+In the recorded benchmark run, the vectorised NumPy version was about 90x faster than the loop-based version.
 
 ## Minimal Usage
 
@@ -87,7 +132,7 @@ for X_chunk, y_chunk in stream_chunks:
 
 ## Submission Checklist
 
-- Include this repository as a zip file or Git link.
+- Submit the GitHub repository link: https://github.com/Akardhan/Assignment-2.2-Programming-Task-2
 - Include the `demo/stream_demo.ipynb` notebook.
 - Record a demo video of setup, demo execution, visualisations, predictions, and logs.
 - Prepare the PDF report with design decisions, testing and edge cases, benchmark results, and reflections.

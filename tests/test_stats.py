@@ -35,6 +35,12 @@ class TestStats(unittest.TestCase):
         stats.update_stats(np.array([[1, np.nan], [3, 4]], dtype=float))
         self.assertFalse(np.isnan(stats.mean()[0]))
 
+    def test_streaming_stats_all_nan_min_max(self):
+        stats = StreamingStats()
+        stats.update_stats(np.array([[1, np.nan], [3, np.nan]], dtype=float))
+        self.assertTrue(np.isnan(stats.min()[1]))
+        self.assertTrue(np.isnan(stats.max()[1]))
+
     def test_streaming_stats_quantile(self):
         stats = StreamingStats()
         stats.update_stats(np.array([[1], [2], [3], [4]], dtype=float))

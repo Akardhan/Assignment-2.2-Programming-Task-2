@@ -88,9 +88,10 @@ class StreamingStats:
         self.mean_[valid] += delta[valid] * counts[valid] / total[valid]
         self.M2_[valid] += chunk_M2[valid] + (delta[valid] ** 2) * self.n_seen_[valid] * counts[valid] / total[valid]
         self.n_seen_[valid] = total[valid]
-        with np.errstate(all='ignore'):
-            self.min_ = np.fmin(self.min_, np.nanmin(X, axis=0))
-            self.max_ = np.fmax(self.max_, np.nanmax(X, axis=0))
+        chunk_min = np.where(mask, X, np.inf).min(axis=0)
+        chunk_max = np.where(mask, X, -np.inf).max(axis=0)
+        self.min_[valid] = np.minimum(self.min_[valid], chunk_min[valid])
+        self.max_[valid] = np.maximum(self.max_[valid], chunk_max[valid])
         self._update_reservoir(X)
         self._update_window(X)
         self.total_rows_ += X.shape[0]
@@ -131,11 +132,15 @@ class StreamingStats:
 
     def min(self) -> Array:
         self._check_fitted()
-        return self.min_.copy()
+        out = self.min_.copy()
+        out[self.n_seen_ == 0] = np.nan
+        return out
 
     def max(self) -> Array:
         self._check_fitted()
-        return self.max_.copy()
+        out = self.max_.copy()
+        out[self.n_seen_ == 0] = np.nan
+        return out
 
     def quantile(self, q: float | Iterable[float], *, sliding_window: bool = False) -> Array:
         self._check_fitted()

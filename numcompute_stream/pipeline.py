@@ -69,8 +69,15 @@ class Pipeline:
         return self
 
     def transform(self, X):
+        """Transform ``X`` through preprocessing steps.
+
+        If the final pipeline step also implements ``transform``, it is applied
+        too. Classifier/regressor final steps are skipped so callers can inspect
+        the feature matrix passed into the model.
+        """
         Xt = X
-        for name, step in self.steps:
+        steps = self.steps if hasattr(self.steps[-1][1], 'transform') else self.steps[:-1]
+        for name, step in steps:
             if not hasattr(step, 'transform'):
                 raise AttributeError(f'Step {name!r} does not provide transform().')
             Xt = step.transform(Xt)
