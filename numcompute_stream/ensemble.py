@@ -329,8 +329,7 @@ class BoostingClassifier:
     def predict_proba(self, X: Array) -> Array:
         self._check_fitted()
         X = self._prepare_X(X)
-        # A weighted average of tree probabilities is more stable than a hard
-        # vote-only softmax for tiny chunks and ties.
+        # Average the tree probabilities so small chunks and ties behave well.
         weights = self.estimator_weights_.astype(float)
         total_weight = float(np.sum(weights))
         probs = np.zeros((X.shape[0], len(self.classes_)), dtype=float)
@@ -413,7 +412,7 @@ class BoostingClassifier:
             error = float(np.dot(weights, incorrect.astype(float)))
             error = min(max(error, 1e-12), 1.0 - 1e-12)
 
-            # SAMME requires weak learners better than random guessing.
+            # Stop if this tree is no better than guessing.
             random_error = 1.0 - (1.0 / n_classes)
             if error >= random_error:
                 if not estimators:

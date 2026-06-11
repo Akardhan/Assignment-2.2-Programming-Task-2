@@ -40,7 +40,7 @@ python -m pip install numpy matplotlib pytest
 python -m pytest -q
 ```
 
-The current suite contains 57 tests covering preprocessing, statistics, metrics, trees, ensembles, pipelines, visualisation, stream training, and edge cases.
+The current suite contains 66 tests covering preprocessing, statistics, metrics, trees, ensembles, pipelines, visualisation, stream training, and edge cases.
 
 ## Run The Demo
 

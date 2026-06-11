@@ -248,7 +248,7 @@ class DecisionTreeClassifier:
     def _majority_class(self, y: Array):
         counts = np.array([np.sum(y == c) for c in self.classes_])
         max_count = counts.max()
-        # Deterministic tie resolution by order in self.classes_.
+        # If there is a tie, pick the first class in sorted order.
         return self.classes_[np.flatnonzero(counts == max_count)[0]]
 
     def _class_proba(self, y: Array) -> Array:
